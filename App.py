@@ -5,6 +5,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 from io import BytesIO
 
+st.set_page_config(page_title="Welcome To Sanpoo AI", layout="wide", page_icon="📊")
 st.set_page_config(page_title="AI Data Analytics Studio", layout="wide", page_icon="📊")
 
 # ---------------- Glassmorphism styling ----------------
