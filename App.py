@@ -254,11 +254,12 @@ with tab3:
 
         if len(num_cols) >= 2:
             corr = df[num_cols].corr().abs()
-            np.fill_diagonal(corr.values, 0)
-            top_pair = corr.stack().idxmax()
-            top_val = corr.loc[top_pair]
-            if top_val > 0.5:
-                insights.append(f"**{top_pair[0]}** and **{top_pair[1]}** show a notably strong relationship (correlation {top_val:.2f}).")
+            corr_pairs = corr.where(~np.eye(len(corr), dtype=bool)).stack()
+            if not corr_pairs.empty:
+                top_pair = corr_pairs.idxmax()
+                top_val = corr_pairs.max()
+                if pd.notna(top_val) and top_val > 0.5:
+                    insights.append(f"**{top_pair[0]}** and **{top_pair[1]}** show a notably strong relationship (correlation {top_val:.2f}).")
 
         for col in cat_cols[:3]:
             top_cat = df[col].value_counts().idxmax()
