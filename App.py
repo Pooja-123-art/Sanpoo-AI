@@ -1,4 +1,3 @@
-cat > /home/claude/app.py << 'PYEOF'
 import os
 import uuid
 import tempfile
@@ -105,8 +104,7 @@ def detect_col(cols, keywords, exclude=None):
 if "db_id" not in st.session_state:
     st.session_state.db_id = str(uuid.uuid4())
 if "con" not in st.session_state:
-    db_path = os.path.join(tempfile.gettempdir(), f"studio_{st.session_state.db_id}.duckdb")
-    st.session_state.con = duckdb.connect(database=db_path)
+    st.session_state.con = duckdb.connect(database=":memory:")
 if "raw_table" not in st.session_state:
     st.session_state.raw_table = None
 if "clean_table" not in st.session_state:
@@ -262,7 +260,7 @@ with tab1:
         if st.session_state.clean_table is not None:
             st.subheader("Cleaning Log")
             for entry in st.session_state.clean_log:
-                st.write(f"✔ {entry}")
+                st.write(f"✔️ {entry}")
 
             clean_count = con.execute("SELECT COUNT(*) FROM clean_data").fetchone()[0]
             st.subheader(f"Cleaned Data Preview ({clean_count:,} rows total)")
@@ -273,12 +271,12 @@ with tab1:
                 export_parquet = os.path.join(tempfile.gettempdir(), f"clean_{st.session_state.db_id}.parquet")
                 con.execute(f"COPY clean_data TO '{export_parquet}' (FORMAT PARQUET)")
                 with open(export_parquet, "rb") as f:
-                    st.download_button("⬇ Download Cleaned Data (Parquet, full — best for big data)",
+                    st.download_button("⬇️ Download Cleaned Data (Parquet, full — best for big data)",
                                         f, "cleaned_data.parquet")
             with dcol2:
                 if clean_count <= 1_000_000:
                     csv_bytes = con.execute("SELECT * FROM clean_data").df().to_csv(index=False).encode("utf-8")
-                    st.download_button("⬇ Download Cleaned CSV (full)", csv_bytes, "cleaned_data.csv", "text/csv")
+                    st.download_button("⬇️ Download Cleaned CSV (full)", csv_bytes, "cleaned_data.csv", "text/csv")
                 else:
                     st.caption("Dataset > 1M rows — CSV download disabled to avoid browser memory issues. Use the Parquet download instead.")
 
@@ -413,4 +411,7 @@ with tab3:
         cost_col = detect_col(num_cols, ["cost", "expense"], exclude=[revenue_col, profit_col])
 
         if profit_col is None and revenue_col and cost_col:
-            profit_expr = f'({qi(revenue_col)} - {
+            profit_expr = f'({qi(revenue_col)} - {qi(cost_col)})'
+            profit_label = "Profit"
+        elif profit_col:
+            profit_expr = qi(profit_col)
