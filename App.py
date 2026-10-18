@@ -423,4 +423,4 @@ with tab3:
         num_cols, cat_cols, date_cols = get_column_types(con, story_table)
         total_records = con.execute(f"SELECT COUNT(*) FROM {story_table}").fetchone()[0]
 
-        revenue_col = detect_col(num_cols, ["revenue", "sales", "total_amount",
+        revenue_col = detect_col(num_cols, ["revenue", "sales", "total_amount","amount"])
