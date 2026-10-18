@@ -44,6 +44,14 @@ CURRENCY = st.sidebar.selectbox("Currency symbol (used in KPIs & story)", ["₹"
 st.sidebar.caption("Big files: prefer CSV/Parquet over Excel. Streamlit Cloud's default upload cap is 200MB — raise it via .streamlit/config.toml (maxUploadSize) if you need more.")
 
 # ================= HELPERS =================
+def to_float(v, default=0.0):
+    if v is None:
+        return default
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return default
+
 def qi(col):
     return '"' + str(col).replace('"', '""') + '"'
 
@@ -51,7 +59,13 @@ def ql(val):
     return "'" + str(val).replace("'", "''") + "'"
 
 def format_big_number(value, symbol=""):
-    if value is None or (isinstance(value, float) and pd.isna(value)):
+    if value is None:
+        return "N/A"
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        return "N/A"
+    if pd.isna(value):
         return "N/A"
     abs_v = abs(value)
     if abs_v >= 1e9:
@@ -331,11 +345,11 @@ with tab2:
         with kpi_card_col_map[0][0]:
             kpi_card("Total Records", f"{filtered_count:,}", kpi_card_col_map[0][1])
         if primary_metric:
-            total_primary = con.execute(f'SELECT SUM({qi(primary_metric)}) FROM {active_table} WHERE {where_sql}').fetchone()[0] or 0
+            total_primary = to_float(con.execute(f'SELECT SUM({qi(primary_metric)}) FROM {active_table} WHERE {where_sql}').fetchone()[0])
             with kpi_card_col_map[1][0]:
                 kpi_card(f"Total {primary_metric}", format_big_number(total_primary, CURRENCY), kpi_card_col_map[1][1])
         if secondary_metric:
-            total_secondary = con.execute(f'SELECT SUM({qi(secondary_metric)}) FROM {active_table} WHERE {where_sql}').fetchone()[0] or 0
+            total_secondary = to_float(con.execute(f'SELECT SUM({qi(secondary_metric)}) FROM {active_table} WHERE {where_sql}').fetchone()[0])
             with kpi_card_col_map[2][0]:
                 kpi_card(f"Total {secondary_metric}", format_big_number(total_secondary, CURRENCY), kpi_card_col_map[2][1])
             if primary_metric and total_primary:
@@ -353,6 +367,7 @@ with tab2:
                     FROM {active_table} WHERE {where_sql}
                     GROUP BY 1 ORDER BY value DESC LIMIT 10
                 """).df()
+                bar_df["value"] = bar_df["value"].astype(float)
                 st.plotly_chart(px.bar(bar_df, x="category", y="value", template="plotly_dark",
                                         title=f"Top {bar_cat} by {primary_metric}"), use_container_width=True)
         with colB:
@@ -364,6 +379,7 @@ with tab2:
                     FROM {active_table} WHERE {where_sql}
                     GROUP BY 1 ORDER BY value DESC LIMIT 8
                 """).df()
+                donut_df["value"] = donut_df["value"].astype(float)
                 st.plotly_chart(px.pie(donut_df, names="category", values="value", hole=0.5,
                                         template="plotly_dark", title=f"{primary_metric} split by {donut_cat}"),
                                  use_container_width=True)
@@ -377,6 +393,7 @@ with tab2:
                     FROM {active_table} WHERE {where_sql}
                     GROUP BY 1 ORDER BY 1
                 """).df()
+                trend_df["value"] = trend_df["value"].astype(float)
                 st.plotly_chart(px.line(trend_df, x="period", y="value", template="plotly_dark",
                                          title=f"{primary_metric} trend over time"), use_container_width=True)
         with colD:
@@ -406,12 +423,4 @@ with tab3:
         num_cols, cat_cols, date_cols = get_column_types(con, story_table)
         total_records = con.execute(f"SELECT COUNT(*) FROM {story_table}").fetchone()[0]
 
-        revenue_col = detect_col(num_cols, ["revenue", "sales", "total_amount", "total revenue", "amount"])
-        profit_col = detect_col(num_cols, ["profit", "net profit", "net_income"], exclude=[revenue_col])
-        cost_col = detect_col(num_cols, ["cost", "expense"], exclude=[revenue_col, profit_col])
-
-        if profit_col is None and revenue_col and cost_col:
-            profit_expr = f'({qi(revenue_col)} - {qi(cost_col)})'
-            profit_label = "Profit"
-        elif profit_col:
-            profit_expr = qi(profit_col)
+        revenue_col = detect_col(num_cols, ["revenue", "sales", "total_amount",
