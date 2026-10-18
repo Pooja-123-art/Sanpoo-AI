@@ -1,3 +1,4 @@
+cat > /home/claude/requirements.txt << 'EOF'
 streamlit>=1.38
 pandas>=2.2
 numpy>=1.26
@@ -5,3 +6,17 @@ plotly>=5.24
 openpyxl>=3.1
 requests>=2.32
 pillow>=11.0
+duckdb>=1.0
+EOF
+
+mkdir -p /home/claude/.streamlit
+cat > /home/claude/.streamlit/config.toml << 'EOF'
+[server]
+maxUploadSize = 2000
+EOF
+
+mkdir -p /mnt/user-data/outputs/.streamlit
+cp /home/claude/app.py /mnt/user-data/outputs/app.py
+cp /home/claude/requirements.txt /mnt/user-data/outputs/requirements.txt
+cp /home/claude/.streamlit/config.toml /mnt/user-data/outputs/.streamlit/config.toml
+ls -la /mnt/user-data/outputs/ /mnt/user-data/outputs/.streamlit/
